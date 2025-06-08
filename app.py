@@ -94,4 +94,4 @@ def export_records():
 
 if __name__ == '__main__':
     init_excel_file()
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', debug=True)
