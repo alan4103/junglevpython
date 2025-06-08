@@ -3,13 +3,15 @@
 <head>
     <title>工作記錄列表</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; }
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
         th { background-color: #f2f2f2; }
         tr:nth-child(even) { background-color: #f9f9f9; }
         .nav { margin: 20px 0; }
         .nav a { text-decoration: none; color: #2196F3; }
+        .bw-black { color: black; }
+        .bw-color { color: #f44336; }
     </style>
 </head>
 <body>
@@ -21,7 +23,9 @@
         <thead>
             <tr>
                 <th>工作單號</th>
-                <th>工作內容</th>
+                <th>日期</th>
+                <th>線數</th>
+                <th>BW</th>
                 <th>記錄時間</th>
             </tr>
         </thead>
@@ -29,7 +33,11 @@
             {% for record in records %}
             <tr>
                 <td>{{ record.job_number }}</td>
-                <td>{{ record.job_content }}</td>
+                <td>{{ record.date }}</td>
+                <td>{{ record.line_count }}</td>
+                <td class="{% if record.bw == '黑白' %}bw-black{% else %}bw-color{% endif %}">
+                    {{ record.bw }}
+                </td>
                 <td>{{ record.record_time }}</td>
             </tr>
             {% endfor %}
