@@ -1,4 +1,4 @@
-import os
+#import os
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file
 import pandas as pd
 from datetime import datetime
@@ -94,4 +94,5 @@ def export_records():
 
 if __name__ == '__main__':
     init_excel_file()
-    app.run(host='0.0.0.0', debug=True)
+    port = int(os.environ.get('PORT', 5000))  # 获取Heroku的PORT环境变量，默认为5000
+    app.run(host='0.0.0.0', port=port)
