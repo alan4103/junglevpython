@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>工作記錄列表</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .nav { margin: 20px 0; }
+        .nav a { text-decoration: none; color: #2196F3; }
+    </style>
+</head>
+<body>
+    <h1>工作記錄列表</h1>
+    <div class="nav">
+        <a href="/">← 返回新增記錄</a>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>工作單號</th>
+                <th>工作內容</th>
+                <th>記錄時間</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in records %}
+            <tr>
+                <td>{{ record.job_number }}</td>
+                <td>{{ record.job_content }}</td>
+                <td>{{ record.record_time }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
