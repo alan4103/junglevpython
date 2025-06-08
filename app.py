@@ -1,10 +1,10 @@
-#import os
+import os
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file
 import pandas as pd
 from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-here'  # 請替換為您的密鑰
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key')  # 從環境變量獲取
 
 # 配置
 DATA_DIR = 'data'
@@ -94,5 +94,6 @@ def export_records():
 
 if __name__ == '__main__':
     init_excel_file()
-    port = int(os.environ.get('PORT', 5000))  # 获取Heroku的PORT环境变量，默认为5000
+    # Heroku 會設置 PORT 環境變量
+    port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
