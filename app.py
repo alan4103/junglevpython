@@ -1,6 +1,7 @@
 import os
 from flask import Flask, render_template, request, redirect, url_for
 from openpyxl import Workbook, load_workbook
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -12,7 +13,7 @@ def init_excel():
     if not os.path.exists(EXCEL_FILE):
         wb = Workbook()
         ws = wb.active
-        ws.append(['工作單號', '工作內容', '記錄時間'])
+        ws.append(['工作單號', '日期', '線數', 'BW', '記錄時間'])
         wb.save(EXCEL_FILE)
 
 # 獲取所有記錄
@@ -24,30 +25,42 @@ def get_all_records():
         if row[0]:  # 確保工作單號不為空
             records.append({
                 'job_number': row[0],
-                'job_content': row[1],
-                'record_time': row[2]
+                'date': row[1],
+                'line_count': row[2],
+                'bw': row[3],
+                'record_time': row[4]
             })
     return records
 
 # 新增記錄
-def add_record(job_number, job_content):
-    from datetime import datetime
+def add_record(job_number, date, line_count, bw):
     wb = load_workbook(EXCEL_FILE)
     ws = wb.active
-    ws.append([job_number, job_content, datetime.now().strftime('%Y-%m-%d %H:%M:%S')])
+    ws.append([
+        job_number, 
+        date, 
+        line_count, 
+        bw, 
+        datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    ])
     wb.save(EXCEL_FILE)
 
 @app.route('/')
 def index():
     init_excel()
-    return render_template('index.html')
+    # 預設日期為今天
+    default_date = datetime.now().strftime('%Y-%m-%d')
+    return render_template('index.html', default_date=default_date)
 
 @app.route('/add', methods=['POST'])
 def add():
     job_number = request.form.get('job_number')
-    job_content = request.form.get('job_content')
-    if job_number and job_content:
-        add_record(job_number, job_content)
+    date = request.form.get('date')
+    line_count = request.form.get('line_count')
+    bw = request.form.get('bw')
+    
+    if job_number and date and line_count and bw:
+        add_record(job_number, date, line_count, bw)
     return redirect(url_for('view_records'))
 
 @app.route('/records')
