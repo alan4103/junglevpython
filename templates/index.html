@@ -3,52 +3,52 @@
 <head>
     <title>工作記錄系統</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; }
         form { display: grid; gap: 15px; }
-        input, textarea { padding: 8px; font-size: 16px; }
+        input, select, textarea { padding: 8px; font-size: 16px; }
         button { padding: 10px; background: #4CAF50; color: white; border: none; cursor: pointer; }
         button:hover { background: #45a049; }
         .form-group { display: grid; grid-template-columns: 120px 1fr; align-items: center; }
         .nav { margin: 20px 0; display: flex; justify-content: space-between; }
         .nav a { text-decoration: none; color: #2196F3; padding: 8px 12px; border: 1px solid #2196F3; border-radius: 4px; }
         .nav a:hover { background: #f0f8ff; }
-        .math-symbols { margin-top: 10px; }
+        .math-symbols { margin: 10px 0; display: flex; flex-wrap: wrap; gap: 5px; }
         .math-btn { 
             padding: 5px 10px; 
-            margin-right: 5px; 
-            margin-bottom: 5px; 
             background: #f0f0f0; 
             border: 1px solid #ccc; 
             cursor: pointer; 
+            font-size: 14px;
         }
         .math-btn:hover { background: #e0e0e0; }
+        .required:after { content: " *"; color: red; }
     </style>
 </head>
 <body>
     <h1>新增工作記錄</h1>
     <form action="/add" method="post">
         <div class="form-group">
-            <label for="job_number">工作單號:</label>
+            <label for="job_number" class="required">工作單號:</label>
             <input type="text" id="job_number" name="job_number" required>
         </div>
         
         <div class="form-group">
-            <label for="date">日期:</label>
-            <input type="date" id="date" name="date" value="{{ default_date }}" required>
+            <label for="department">部門:</label>
+            <input type="text" id="department" name="department">
         </div>
         
         <div class="form-group">
             <label for="line_count">線數:</label>
-            <input type="number" id="line_count" name="line_count" min="1" required>
+            <input type="number" id="line_count" name="line_count" min="1">
         </div>
         
         <div class="form-group">
-            <label for="bw">BW (可含數學符號):</label>
-            <textarea id="bw" name="bw" rows="2" required></textarea>
+            <label for="bw">BW:</label>
+            <textarea id="bw" name="bw" rows="2"></textarea>
         </div>
         
         <div class="math-symbols">
-            <strong>常用數學符號:</strong><br>
+            <span>常用數學符號:</span>
             <button type="button" class="math-btn" onclick="insertSymbol('+')">+</button>
             <button type="button" class="math-btn" onclick="insertSymbol('-')">-</button>
             <button type="button" class="math-btn" onclick="insertSymbol('×')">×</button>
@@ -60,6 +60,16 @@
             <button type="button" class="math-btn" onclick="insertSymbol('π')">π</button>
             <button type="button" class="math-btn" onclick="insertSymbol('∑')">∑</button>
             <button type="button" class="math-btn" onclick="insertSymbol('∫')">∫</button>
+        </div>
+        
+        <div class="form-group">
+            <label for="remark">備註:</label>
+            <textarea id="remark" name="remark" rows="3"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="date" class="required">日期:</label>
+            <input type="date" id="date" name="date" value="{{ default_date }}" required>
         </div>
         
         <button type="submit">提交</button>

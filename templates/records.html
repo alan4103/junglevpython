@@ -6,12 +6,14 @@
         body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        th { background-color: #f2f2f2; }
+        th { background-color: #f2f2f2; position: sticky; top: 0; }
         tr:nth-child(even) { background-color: #f9f9f9; }
+        tr:hover { background-color: #f1f1f1; }
         .nav { margin: 20px 0; display: flex; justify-content: space-between; }
         .nav a { text-decoration: none; color: #2196F3; padding: 8px 12px; border: 1px solid #2196F3; border-radius: 4px; }
         .nav a:hover { background: #f0f8ff; }
-        .bw-content { font-family: "Times New Roman", serif; font-size: 1.1em; }
+        .bw-content { font-family: "Times New Roman", serif; font-size: 1.1em; white-space: pre-wrap; }
+        .table-container { max-height: 70vh; overflow-y: auto; }
     </style>
 </head>
 <body>
@@ -20,27 +22,34 @@
         <a href="/">← 返回新增記錄</a>
         <a href="/download">下載Excel文件</a>
     </div>
-    <table>
-        <thead>
-            <tr>
-                <th>工作單號</th>
-                <th>日期</th>
-                <th>線數</th>
-                <th>BW (可含數學符號)</th>
-                <th>記錄時間</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for record in records %}
-            <tr>
-                <td>{{ record.job_number }}</td>
-                <td>{{ record.date }}</td>
-                <td>{{ record.line_count }}</td>
-                <td class="bw-content">{{ record.bw }}</td>
-                <td>{{ record.record_time }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>工作單號</th>
+                    <th>部門</th>
+                    <th>線數</th>
+                    <th>BW</th>
+                    <th>備註</th>
+                    <th>記錄時間</th>
+                    <th>日期</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in records %}
+                <tr>
+                    <td>{{ record.job_number }}</td>
+                    <td>{{ record.department }}</td>
+                    <td>{{ record.line_count }}</td>
+                    <td class="bw-content">{{ record.bw }}</td>
+                    <td>{{ record.remark }}</td>
+                    <td>{{ record.record_time }}</td>
+                    <td>{{ record.date }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </body>
 </html>

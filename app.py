@@ -14,7 +14,7 @@ def init_excel():
     if not os.path.exists(EXCEL_FILE):
         wb = Workbook()
         ws = wb.active
-        ws.append(['工作單號', '日期', '線數', 'BW (可含數學符號)', '記錄時間'])
+        ws.append(['工作單號', '部門', '線數', 'BW (可含數學符號)', '備註', '記錄時間', '日期'])
         wb.save(EXCEL_FILE)
 
 # 獲取所有記錄
@@ -26,39 +26,38 @@ def get_all_records():
         if row[0]:  # 確保工作單號不為空
             records.append({
                 'job_number': row[0],
-                'date': row[1],
+                'department': row[1],
                 'line_count': row[2],
                 'bw': row[3],
-                'record_time': row[4]
+                'remark': row[4],
+                'record_time': row[5],
+                'date': row[6]
             })
     return records
 
 # 新增記錄
-def add_record(job_number, date, line_count, bw):
+def add_record(job_number, department, line_count, bw, remark, date):
     wb = load_workbook(EXCEL_FILE)
     ws = wb.active
     ws.append([
-        job_number, 
-        date, 
-        line_count, 
-        bw, 
-        datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        job_number,
+        department,
+        line_count,
+        bw,
+        remark,
+        datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        date
     ])
     wb.save(EXCEL_FILE)
 
 # 下載 Excel 文件
 @app.route('/download')
 def download_excel():
-    # 確保文件存在
     init_excel()
-    
-    # 創建文件流
     file_stream = BytesIO()
     wb = load_workbook(EXCEL_FILE)
     wb.save(file_stream)
     file_stream.seek(0)
-    
-    # 發送文件
     return send_file(
         file_stream,
         as_attachment=True,
@@ -69,19 +68,20 @@ def download_excel():
 @app.route('/')
 def index():
     init_excel()
-    # 預設日期為今天
     default_date = datetime.now().strftime('%Y-%m-%d')
     return render_template('index.html', default_date=default_date)
 
 @app.route('/add', methods=['POST'])
 def add():
     job_number = request.form.get('job_number')
-    date = request.form.get('date')
+    department = request.form.get('department')
     line_count = request.form.get('line_count')
     bw = request.form.get('bw')
+    remark = request.form.get('remark')
+    date = request.form.get('date')
     
-    if job_number and date and line_count and bw:
-        add_record(job_number, date, line_count, bw)
+    if job_number and date:
+        add_record(job_number, department, line_count, bw, remark, date)
     return redirect(url_for('view_records'))
 
 @app.route('/records')
