@@ -1,7 +1,8 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, send_file
 from openpyxl import Workbook, load_workbook
 from datetime import datetime
+from io import BytesIO
 
 app = Flask(__name__)
 
@@ -13,7 +14,7 @@ def init_excel():
     if not os.path.exists(EXCEL_FILE):
         wb = Workbook()
         ws = wb.active
-        ws.append(['工作單號', '日期', '線數', 'BW', '記錄時間'])
+        ws.append(['工作單號', '日期', '線數', 'BW (可含數學符號)', '記錄時間'])
         wb.save(EXCEL_FILE)
 
 # 獲取所有記錄
@@ -44,6 +45,26 @@ def add_record(job_number, date, line_count, bw):
         datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     ])
     wb.save(EXCEL_FILE)
+
+# 下載 Excel 文件
+@app.route('/download')
+def download_excel():
+    # 確保文件存在
+    init_excel()
+    
+    # 創建文件流
+    file_stream = BytesIO()
+    wb = load_workbook(EXCEL_FILE)
+    wb.save(file_stream)
+    file_stream.seek(0)
+    
+    # 發送文件
+    return send_file(
+        file_stream,
+        as_attachment=True,
+        download_name='work_records.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
 
 @app.route('/')
 def index():
