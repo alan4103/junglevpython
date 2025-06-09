@@ -5,12 +5,23 @@
     <style>
         body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
         form { display: grid; gap: 15px; }
-        input, select, textarea { padding: 8px; font-size: 16px; }
+        input, textarea { padding: 8px; font-size: 16px; }
         button { padding: 10px; background: #4CAF50; color: white; border: none; cursor: pointer; }
         button:hover { background: #45a049; }
         .form-group { display: grid; grid-template-columns: 120px 1fr; align-items: center; }
-        .nav { margin: 20px 0; }
-        .nav a { text-decoration: none; color: #2196F3; }
+        .nav { margin: 20px 0; display: flex; justify-content: space-between; }
+        .nav a { text-decoration: none; color: #2196F3; padding: 8px 12px; border: 1px solid #2196F3; border-radius: 4px; }
+        .nav a:hover { background: #f0f8ff; }
+        .math-symbols { margin-top: 10px; }
+        .math-btn { 
+            padding: 5px 10px; 
+            margin-right: 5px; 
+            margin-bottom: 5px; 
+            background: #f0f0f0; 
+            border: 1px solid #ccc; 
+            cursor: pointer; 
+        }
+        .math-btn:hover { background: #e0e0e0; }
     </style>
 </head>
 <body>
@@ -32,17 +43,46 @@
         </div>
         
         <div class="form-group">
-            <label for="bw">BW:</label>
-            <select id="bw" name="bw" required>
-                <option value="黑白">黑白</option>
-                <option value="彩色">彩色</option>
-            </select>
+            <label for="bw">BW (可含數學符號):</label>
+            <textarea id="bw" name="bw" rows="2" required></textarea>
+        </div>
+        
+        <div class="math-symbols">
+            <strong>常用數學符號:</strong><br>
+            <button type="button" class="math-btn" onclick="insertSymbol('+')">+</button>
+            <button type="button" class="math-btn" onclick="insertSymbol('-')">-</button>
+            <button type="button" class="math-btn" onclick="insertSymbol('×')">×</button>
+            <button type="button" class="math-btn" onclick="insertSymbol('÷')">÷</button>
+            <button type="button" class="math-btn" onclick="insertSymbol('=')">=</button>
+            <button type="button" class="math-btn" onclick="insertSymbol('√')">√</button>
+            <button type="button" class="math-btn" onclick="insertSymbol('∞')">∞</button>
+            <button type="button" class="math-btn" onclick="insertSymbol('°')">°</button>
+            <button type="button" class="math-btn" onclick="insertSymbol('π')">π</button>
+            <button type="button" class="math-btn" onclick="insertSymbol('∑')">∑</button>
+            <button type="button" class="math-btn" onclick="insertSymbol('∫')">∫</button>
         </div>
         
         <button type="submit">提交</button>
     </form>
+    
     <div class="nav">
+        <a href="/">← 返回新增記錄</a>
         <a href="/records">查看所有記錄 →</a>
+        <a href="/download">下載Excel文件</a>
     </div>
+    
+    <script>
+        function insertSymbol(symbol) {
+            const bwField = document.getElementById('bw');
+            const startPos = bwField.selectionStart;
+            const endPos = bwField.selectionEnd;
+            const currentValue = bwField.value;
+            
+            bwField.value = currentValue.substring(0, startPos) + symbol + currentValue.substring(endPos);
+            bwField.focus();
+            bwField.selectionStart = startPos + symbol.length;
+            bwField.selectionEnd = startPos + symbol.length;
+        }
+    </script>
 </body>
 </html>
