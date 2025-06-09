@@ -14,7 +14,7 @@ def init_excel():
     if not os.path.exists(EXCEL_FILE):
         wb = Workbook()
         ws = wb.active
-        ws.append(['ID', '工作單號', '部門', '線數', 'BW (可含數學符號)', '備註', '記錄時間', '日期'])
+        ws.append(['ID', '工作單號', '部門', '線數', '備註', '記錄時間', '日期'])
         wb.save(EXCEL_FILE)
 
 # 獲取所有記錄
@@ -29,15 +29,34 @@ def get_all_records():
                 'job_number': row[1],
                 'department': row[2],
                 'line_count': row[3],
-                'bw': row[4],
-                'remark': row[5],
-                'record_time': row[6],
-                'date': row[7]
+                'remark': row[4],
+                'record_time': row[5],
+                'date': row[6]
+            })
+    return records
+
+# 搜尋記錄
+def search_records(keyword):
+    wb = load_workbook(EXCEL_FILE)
+    ws = wb.active
+    records = []
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if row[1] and (keyword.lower() in str(row[1]).lower() or  # 工作單號
+                       keyword.lower() in str(row[2]).lower() or  # 部門
+                       keyword.lower() in str(row[4]).lower()):   # 備註
+            records.append({
+                'id': row[0],
+                'job_number': row[1],
+                'department': row[2],
+                'line_count': row[3],
+                'remark': row[4],
+                'record_time': row[5],
+                'date': row[6]
             })
     return records
 
 # 新增記錄
-def add_record(job_number, department, line_count, bw, remark, date):
+def add_record(job_number, department, line_count, remark, date):
     wb = load_workbook(EXCEL_FILE)
     ws = wb.active
     
@@ -52,11 +71,26 @@ def add_record(job_number, department, line_count, bw, remark, date):
         job_number,
         department,
         line_count,
-        bw,
         remark,
         datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         date
     ])
+    wb.save(EXCEL_FILE)
+
+# 更新記錄
+def update_record(record_id, job_number, department, line_count, remark, date):
+    wb = load_workbook(EXCEL_FILE)
+    ws = wb.active
+    
+    for row in ws.iter_rows(min_row=2):
+        if row[0].value == record_id:
+            row[1].value = job_number
+            row[2].value = department
+            row[3].value = line_count
+            row[4].value = remark
+            row[6].value = date
+            break
+    
     wb.save(EXCEL_FILE)
 
 # 刪除記錄
@@ -103,13 +137,46 @@ def add():
     job_number = request.form.get('job_number')
     department = request.form.get('department')
     line_count = request.form.get('line_count')
-    bw = request.form.get('bw')
     remark = request.form.get('remark')
     date = request.form.get('date')
     
     if job_number and date:
-        add_record(job_number, department, line_count, bw, remark, date)
+        add_record(job_number, department, line_count, remark, date)
     return redirect(url_for('view_records'))
+
+@app.route('/edit/<int:record_id>', methods=['GET', 'POST'])
+def edit(record_id):
+    if request.method == 'POST':
+        job_number = request.form.get('job_number')
+        department = request.form.get('department')
+        line_count = request.form.get('line_count')
+        remark = request.form.get('remark')
+        date = request.form.get('date')
+        
+        update_record(record_id, job_number, department, line_count, remark, date)
+        return redirect(url_for('view_records'))
+    
+    # GET 請求時顯示編輯表單
+    wb = load_workbook(EXCEL_FILE)
+    ws = wb.active
+    record = None
+    
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if row[0] == record_id:
+            record = {
+                'id': row[0],
+                'job_number': row[1],
+                'department': row[2],
+                'line_count': row[3],
+                'remark': row[4],
+                'date': row[6]
+            }
+            break
+    
+    if not record:
+        return redirect(url_for('view_records'))
+    
+    return render_template('edit.html', record=record)
 
 @app.route('/delete/<int:record_id>')
 def delete(record_id):
@@ -118,8 +185,12 @@ def delete(record_id):
 
 @app.route('/records')
 def view_records():
-    records = get_all_records()
-    return render_template('records.html', records=records)
+    keyword = request.args.get('search', '')
+    if keyword:
+        records = search_records(keyword)
+    else:
+        records = get_all_records()
+    return render_template('records.html', records=records, search_keyword=keyword)
 
 if __name__ == '__main__':
     app.run(debug=True)

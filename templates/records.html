@@ -4,6 +4,10 @@
     <title>工作記錄列表</title>
     <style>
         body { font-family: Arial, sans-serif; max-width: 1300px; margin: 0 auto; padding: 20px; }
+        .search-container { margin: 20px 0; display: flex; gap: 10px; }
+        .search-input { padding: 8px; font-size: 16px; flex-grow: 1; }
+        .search-btn { padding: 8px 16px; background: #4CAF50; color: white; border: none; cursor: pointer; }
+        .search-btn:hover { background: #45a049; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
         th { background-color: #f2f2f2; position: sticky; top: 0; }
@@ -12,8 +16,15 @@
         .nav { margin: 20px 0; display: flex; justify-content: space-between; }
         .nav a { text-decoration: none; color: #2196F3; padding: 8px 12px; border: 1px solid #2196F3; border-radius: 4px; }
         .nav a:hover { background: #f0f8ff; }
-        .bw-content { font-family: "Times New Roman", serif; font-size: 1.1em; white-space: pre-wrap; }
         .table-container { max-height: 70vh; overflow-y: auto; }
+        .edit-btn { 
+            padding: 6px 12px; 
+            background-color: #2196F3; 
+            color: white; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+        }
         .delete-btn { 
             padding: 6px 12px; 
             background-color: #f44336; 
@@ -22,12 +33,21 @@
             border-radius: 4px; 
             cursor: pointer; 
         }
+        .edit-btn:hover { background-color: #0b7dda; }
         .delete-btn:hover { background-color: #d32f2f; }
         .actions { display: flex; gap: 5px; }
     </style>
 </head>
 <body>
     <h1>工作記錄列表</h1>
+    
+    <div class="search-container">
+        <form action="/records" method="get">
+            <input type="text" name="search" class="search-input" placeholder="搜尋工作單號、部門或備註..." value="{{ search_keyword }}">
+            <button type="submit" class="search-btn">搜尋</button>
+        </form>
+    </div>
+    
     <div class="nav">
         <a href="/">← 返回新增記錄</a>
         <a href="/download">下載Excel文件</a>
@@ -41,7 +61,6 @@
                     <th>工作單號</th>
                     <th>部門</th>
                     <th>線數</th>
-                    <th>BW</th>
                     <th>備註</th>
                     <th>記錄時間</th>
                     <th>日期</th>
@@ -55,11 +74,11 @@
                     <td>{{ record.job_number }}</td>
                     <td>{{ record.department }}</td>
                     <td>{{ record.line_count }}</td>
-                    <td class="bw-content">{{ record.bw }}</td>
                     <td>{{ record.remark }}</td>
                     <td>{{ record.record_time }}</td>
                     <td>{{ record.date }}</td>
                     <td class="actions">
+                        <button class="edit-btn" onclick="window.location.href='/edit/{{ record.id }}'">編輯</button>
                         <button class="delete-btn" onclick="confirmDelete({{ record.id }})">刪除</button>
                     </td>
                 </tr>
