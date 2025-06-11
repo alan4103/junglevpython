@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 env:
-  APP_NAME: "flask-app"  # 自定义应用名称
+  APP_NAME: "flask-app"  # 自定义应用名称（仅字母数字和短横线）
   DOCKER_REGISTRY: "docker.io"  # 使用 Docker Hub
 
 jobs:
@@ -16,12 +16,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 步骤 2: 设置构建环境 (修复缓存问题)
+      # 步骤 2: 设置构建环境
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
-          driver-opts: |
-            image=moby/buildkit:master
+          driver: docker-container
 
       # 步骤 3: 登录 Docker Hub
       - name: Login to Docker Hub
@@ -30,7 +29,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 步骤 4: 构建并推送 Docker 镜像 (修复缓存问题)
+      # 步骤 4: 构建并推送 Docker 镜像（修复标签问题）
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -39,16 +38,20 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/${{ env.APP_NAME }}:latest
             ${{ secrets.DOCKER_USERNAME }}/${{ env.APP_NAME }}:${{ github.sha }}
-          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ env.APP_NAME }}:buildcache
-          cache-to: type=inline
+          # 简化缓存配置
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       # 步骤 5: 触发 Dokploy 部署
       - name: Deploy to Dokploy
         run: |
+          FULL_IMAGE_NAME="${{ secrets.DOCKER_USERNAME }}/${{ env.APP_NAME }}:${{ github.sha }}"
+          echo "正在部署镜像: $FULL_IMAGE_NAME"
+          
           curl -X POST "${{ secrets.DOKPLOY_SERVER_URL }}/api/applications/${{ secrets.DOKPLOY_APP_ID }}/deploy" \
             -H "Authorization: Bearer ${{ secrets.DOKPLOY_API_KEY }}" \
             -H "Content-Type: application/json" \
-            -d '{"image": "${{ secrets.DOCKER_USERNAME }}/${{ env.APP_NAME }}:${{ github.sha }}"}'
+            -d '{"image": "'"$FULL_IMAGE_NAME"'"}'
 
       # 步骤 6: 健康检查
       - name: Health Check
