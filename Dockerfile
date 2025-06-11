@@ -30,10 +30,10 @@ COPY . .
 # 设置环境变量
 ENV FLASK_APP=app.py
 ENV FLASK_RUN_HOST=0.0.0.0
-ENV FLASK_RUN_PORT=5000
+ENV FLASK_RUN_PORT=3000
 
 # 暴露端口
 EXPOSE 5000
 
 # 启动命令（使用生产服务器）
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:3000", "app:app"]
