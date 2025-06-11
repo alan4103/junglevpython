@@ -1,61 +1,74 @@
-name: Deploy Flask App to Dokploy
+name: Deploy Flask to Dokploy
 
 on:
   push:
     branches: [main]
 
 env:
-  APP_NAME: "flask-app"  # 自定义应用名称（仅字母数字和短横线）
-  DOCKER_REGISTRY: "docker.io"  # 使用 Docker Hub
+  APP_NAME: "my-flask-app"  # 请更改为你的应用名称（仅小写字母、数字和短横线）
+  DOCKER_USER: ${{ secrets.DOCKER_USERNAME }}  # 从GitHub Secrets获取
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     steps:
-      # 步骤 1: 检出代码
-      - name: Checkout code
-        uses: actions/checkout@v4
+      # 1. 检出代码
+      - uses: actions/checkout@v4
 
-      # 步骤 2: 设置构建环境
+      # 2. 设置Python环境
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      # 3. 安装依赖
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          # 如果有测试可以添加：
+          # pytest tests/
+
+      # 4. 配置Docker构建环境
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
-          driver: docker-container
+          driver: "docker-container"
 
-      # 步骤 3: 登录 Docker Hub
-      - name: Login to Docker Hub
+      # 5. 登录Docker Hub
+      - name: Login to Docker Registry
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 步骤 4: 构建并推送 Docker 镜像（修复标签问题）
-      - name: Build and push Docker image
+      # 6. 构建并推送镜像（简化版，无缓存）
+      - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/${{ env.APP_NAME }}:latest
-            ${{ secrets.DOCKER_USERNAME }}/${{ env.APP_NAME }}:${{ github.sha }}
-          # 简化缓存配置
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ${{ env.DOCKER_USER }}/${{ env.APP_NAME }}:latest
+            ${{ env.DOCKER_USER }}/${{ env.APP_NAME }}:${{ github.sha }}
 
-      # 步骤 5: 触发 Dokploy 部署
+      # 7. 触发Dokploy部署
       - name: Deploy to Dokploy
         run: |
-          FULL_IMAGE_NAME="${{ secrets.DOCKER_USERNAME }}/${{ env.APP_NAME }}:${{ github.sha }}"
-          echo "正在部署镜像: $FULL_IMAGE_NAME"
+          DEPLOY_IMAGE="${{ env.DOCKER_USER }}/${{ env.APP_NAME }}:${{ github.sha }}"
+          echo "🛫 正在部署镜像: $DEPLOY_IMAGE"
           
           curl -X POST "${{ secrets.DOKPLOY_SERVER_URL }}/api/applications/${{ secrets.DOKPLOY_APP_ID }}/deploy" \
             -H "Authorization: Bearer ${{ secrets.DOKPLOY_API_KEY }}" \
             -H "Content-Type: application/json" \
-            -d '{"image": "'"$FULL_IMAGE_NAME"'"}'
+            -d '{"image": "'"$DEPLOY_IMAGE"'"}'
 
-      # 步骤 6: 健康检查
-      - name: Health Check
+          echo "✅ 部署请求已发送"
+
+      # 8. 健康检查（可选）
+      - name: Verify Deployment
+        if: success()
         run: |
-          echo "等待应用启动..."
+          echo "⏳ 等待应用启动（30秒）..."
           sleep 30
-          curl -sSf ${{ secrets.APP_URL }} || exit 1
+          echo "🔍 检查应用健康状态:"
+          curl -sSf ${{ secrets.APP_URL }}/health || echo "❌ 健康检查失败"
