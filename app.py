@@ -10,7 +10,7 @@ app = Flask(__name__)
 
 # MySQL 數據庫配置
 DB_CONFIG = {
-    'host': 'localhost',
+    'host': 'junglevproject-worksql-k1jaa3:3306',
     'user': 'workrecord',  # 替換為你的 MySQL 用戶名
     'password': 'Ylbbqs1236',  # 替換為你的 MySQL 密碼
     'database': 'workrecord'  # 數據庫名稱
