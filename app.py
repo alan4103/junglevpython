@@ -1,152 +1,224 @@
 import os
 from flask import Flask, render_template, request, redirect, url_for, send_file
-from openpyxl import Workbook, load_workbook
 from datetime import datetime
 from io import BytesIO
+import mysql.connector
+from mysql.connector import Error
+from openpyxl import Workbook
 
 app = Flask(__name__)
 
-# Excel 檔案路徑
-EXCEL_FILE = 'work_records.xlsx'
+# MySQL 數據庫配置
+DB_CONFIG = {
+    'host': 'localhost',
+    'user': 'root',  # 替換為你的 MySQL 用戶名
+    'password': '',  # 替換為你的 MySQL 密碼
+    'database': 'work_records_db'  # 數據庫名稱
+}
 
-# 初始化 Excel 檔案
-def init_excel():
-    if not os.path.exists(EXCEL_FILE):
-        wb = Workbook()
-        ws = wb.active
-        # 增加 work_type 欄位在部門後面
-        ws.append(['ID', '工作單號', '部門', '工作類型', '線數', '備註', '記錄時間', '日期'])
-        wb.save(EXCEL_FILE)
+# 初始化數據庫連接
+def get_db_connection():
+    try:
+        connection = mysql.connector.connect(**DB_CONFIG)
+        return connection
+    except Error as e:
+        print(f"Error connecting to MySQL: {e}")
+        return None
+
+# 初始化數據庫表
+def init_db():
+    try:
+        connection = get_db_connection()
+        if connection:
+            cursor = connection.cursor()
+            
+            # 檢查數據庫是否存在，不存在則創建
+            cursor.execute("CREATE DATABASE IF NOT EXISTS work_records_db")
+            cursor.execute("USE work_records_db")
+            
+            # 創建表
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS work_records (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    job_number VARCHAR(50) NOT NULL,
+                    department VARCHAR(50),
+                    work_type ENUM('安裝', '維修', '收機') NOT NULL,
+                    line_count INT,
+                    remark TEXT,
+                    record_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    date DATE NOT NULL
+                )
+            """)
+            connection.commit()
+    except Error as e:
+        print(f"Error initializing database: {e}")
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
 
 # 獲取所有記錄
 def get_all_records():
-    wb = load_workbook(EXCEL_FILE)
-    ws = wb.active
     records = []
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        if row[1]:  # 確保工作單號不為空
-            records.append({
-                'id': row[0],
-                'job_number': row[1],
-                'department': row[2],
-                'work_type': row[3],  # 新增工作類型
-                'line_count': row[4],
-                'remark': row[5],
-                'record_time': row[6],
-                'date': row[7]
-            })
+    try:
+        connection = get_db_connection()
+        if connection:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute("""
+                SELECT id, job_number, department, work_type, 
+                       line_count, remark, record_time, date 
+                FROM work_records 
+                ORDER BY date DESC, record_time DESC
+            """)
+            records = cursor.fetchall()
+    except Error as e:
+        print(f"Error fetching records: {e}")
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
     return records
 
 # 搜尋記錄
 def search_records(keyword):
-    wb = load_workbook(EXCEL_FILE)
-    ws = wb.active
     records = []
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        if row[1] and (keyword.lower() in str(row[1]).lower() or  # 工作單號
-                       keyword.lower() in str(row[2]).lower() or  # 部門
-                       keyword.lower() in str(row[3]).lower() or  # 工作類型
-                       keyword.lower() in str(row[5]).lower()):   # 備註
-            records.append({
-                'id': row[0],
-                'job_number': row[1],
-                'department': row[2],
-                'work_type': row[3],
-                'line_count': row[4],
-                'remark': row[5],
-                'record_time': row[6],
-                'date': row[7]
-            })
+    try:
+        connection = get_db_connection()
+        if connection:
+            cursor = connection.cursor(dictionary=True)
+            query = """
+                SELECT id, job_number, department, work_type, 
+                       line_count, remark, record_time, date 
+                FROM work_records 
+                WHERE job_number LIKE %s OR 
+                      department LIKE %s OR 
+                      work_type LIKE %s OR 
+                      remark LIKE %s
+                ORDER BY date DESC, record_time DESC
+            """
+            search_param = f"%{keyword}%"
+            cursor.execute(query, (search_param, search_param, search_param, search_param))
+            records = cursor.fetchall()
+    except Error as e:
+        print(f"Error searching records: {e}")
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
     return records
 
 # 新增記錄
 def add_record(job_number, department, work_type, line_count, remark, date):
-    wb = load_workbook(EXCEL_FILE)
-    ws = wb.active
-    
-    # 生成唯一ID (當前最大ID + 1)
-    max_id = 0
-    for row in ws.iter_rows(min_row=2, max_col=1, values_only=True):
-        if row[0] and isinstance(row[0], int):
-            max_id = max(max_id, row[0])
-    
-    # 驗證工作類型是否有效
-    valid_work_types = ['安裝', '維修', '收機']
-    if work_type not in valid_work_types:
-        work_type = valid_work_types[0]  # 預設為第一個選項
-    
-    ws.append([
-        max_id + 1,
-        job_number,
-        department,
-        work_type,
-        line_count,
-        remark,
-        datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        date
-    ])
-    wb.save(EXCEL_FILE)
+    try:
+        connection = get_db_connection()
+        if connection:
+            cursor = connection.cursor()
+            query = """
+                INSERT INTO work_records 
+                (job_number, department, work_type, line_count, remark, date)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """
+            cursor.execute(query, (job_number, department, work_type, line_count, remark, date))
+            connection.commit()
+            return cursor.lastrowid
+    except Error as e:
+        print(f"Error adding record: {e}")
+        connection.rollback()
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+    return None
 
 # 更新記錄
 def update_record(record_id, job_number, department, work_type, line_count, remark, date):
-    wb = load_workbook(EXCEL_FILE)
-    ws = wb.active
-    
-    # 驗證工作類型是否有效
-    valid_work_types = ['安裝', '維修', '收機']
-    if work_type not in valid_work_types:
-        work_type = valid_work_types[0]  # 預設為第一個選項
-    
-    for row in ws.iter_rows(min_row=2):
-        if row[0].value == record_id:
-            row[1].value = job_number
-            row[2].value = department
-            row[3].value = work_type
-            row[4].value = line_count
-            row[5].value = remark
-            row[7].value = date  # 注意欄位移動
-            break
-    
-    wb.save(EXCEL_FILE)
+    try:
+        connection = get_db_connection()
+        if connection:
+            cursor = connection.cursor()
+            query = """
+                UPDATE work_records 
+                SET job_number = %s, 
+                    department = %s, 
+                    work_type = %s, 
+                    line_count = %s, 
+                    remark = %s, 
+                    date = %s 
+                WHERE id = %s
+            """
+            cursor.execute(query, (job_number, department, work_type, line_count, remark, date, record_id))
+            connection.commit()
+            return cursor.rowcount > 0
+    except Error as e:
+        print(f"Error updating record: {e}")
+        connection.rollback()
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+    return False
 
 # 刪除記錄
 def delete_record(record_id):
-    wb = load_workbook(EXCEL_FILE)
-    ws = wb.active
-    
-    # 找到要刪除的行
-    row_to_delete = None
-    for idx, row in enumerate(ws.iter_rows(min_row=2, max_col=1), start=2):
-        if row[0].value == record_id:
-            row_to_delete = idx
-            break
-    
-    if row_to_delete:
-        ws.delete_rows(row_to_delete)
-        wb.save(EXCEL_FILE)
-        return True
+    try:
+        connection = get_db_connection()
+        if connection:
+            cursor = connection.cursor()
+            query = "DELETE FROM work_records WHERE id = %s"
+            cursor.execute(query, (record_id,))
+            connection.commit()
+            return cursor.rowcount > 0
+    except Error as e:
+        print(f"Error deleting record: {e}")
+        connection.rollback()
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
     return False
 
 # 下載 Excel 文件
 @app.route('/download')
 def download_excel():
-    init_excel()
-    file_stream = BytesIO()
-    wb = load_workbook(EXCEL_FILE)
-    wb.save(file_stream)
-    file_stream.seek(0)
-    return send_file(
-        file_stream,
-        as_attachment=True,
-        download_name='work_records.xlsx',
-        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
+    try:
+        # 獲取所有記錄
+        records = get_all_records()
+        
+        # 創建 Excel 文件
+        wb = Workbook()
+        ws = wb.active
+        ws.append(['ID', '工作單號', '部門', '工作類型', '線數', '備註', '記錄時間', '日期'])
+        
+        for record in records:
+            ws.append([
+                record['id'],
+                record['job_number'],
+                record['department'],
+                record['work_type'],
+                record['line_count'],
+                record['remark'],
+                record['record_time'].strftime('%Y-%m-%d %H:%M:%S'),
+                record['date'].strftime('%Y-%m-%d')
+            ])
+        
+        file_stream = BytesIO()
+        wb.save(file_stream)
+        file_stream.seek(0)
+        
+        return send_file(
+            file_stream,
+            as_attachment=True,
+            download_name='work_records.xlsx',
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+    except Error as e:
+        print(f"Error generating Excel: {e}")
+        return redirect(url_for('view_records'))
 
 @app.route('/')
 def index():
-    init_excel()
+    init_db()  # 確保數據庫已初始化
     default_date = datetime.now().strftime('%Y-%m-%d')
-    # 定義工作類型選項
     work_types = ['安裝', '維修', '收機']
     return render_template('index.html', default_date=default_date, work_types=work_types)
 
@@ -154,8 +226,8 @@ def index():
 def add():
     job_number = request.form.get('job_number')
     department = request.form.get('department')
-    work_type = request.form.get('work_type')  # 新增工作類型
-    line_count = request.form.get('line_count')
+    work_type = request.form.get('work_type')
+    line_count = request.form.get('line_count', type=int)
     remark = request.form.get('remark')
     date = request.form.get('date')
     
@@ -168,8 +240,8 @@ def edit(record_id):
     if request.method == 'POST':
         job_number = request.form.get('job_number')
         department = request.form.get('department')
-        work_type = request.form.get('work_type')  # 新增工作類型
-        line_count = request.form.get('line_count')
+        work_type = request.form.get('work_type')
+        line_count = request.form.get('line_count', type=int)
         remark = request.form.get('remark')
         date = request.form.get('date')
         
@@ -177,28 +249,26 @@ def edit(record_id):
         return redirect(url_for('view_records'))
     
     # GET 請求時顯示編輯表單
-    wb = load_workbook(EXCEL_FILE)
-    ws = wb.active
-    record = None
-    
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        if row[0] == record_id:
-            record = {
-                'id': row[0],
-                'job_number': row[1],
-                'department': row[2],
-                'work_type': row[3],  # 新增工作類型
-                'line_count': row[4],
-                'remark': row[5],
-                'date': row[7]  # 注意索引變更
-            }
-            break
-    
-    if not record:
+    try:
+        connection = get_db_connection()
+        if connection:
+            cursor = connection.cursor(dictionary=True)
+            query = "SELECT * FROM work_records WHERE id = %s"
+            cursor.execute(query, (record_id,))
+            record = cursor.fetchone()
+            
+            if not record:
+                return redirect(url_for('view_records'))
+            
+            work_types = ['安裝', '維修', '收機']
+            return render_template('edit.html', record=record, work_types=work_types)
+    except Error as e:
+        print(f"Error fetching record for edit: {e}")
         return redirect(url_for('view_records'))
-    
-    work_types = ['安裝', '維修', '收機']
-    return render_template('edit.html', record=record, work_types=work_types)
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
 
 @app.route('/delete/<int:record_id>')
 def delete(record_id):
@@ -215,4 +285,5 @@ def view_records():
     return render_template('records.html', records=records, search_keyword=keyword)
 
 if __name__ == '__main__':
+    init_db()  # 啟動時初始化數據庫
     app.run(debug=True)
