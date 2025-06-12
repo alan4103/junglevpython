@@ -11,7 +11,7 @@ app.secret_key = 'your_secret_key_here'  # 用於 flash 消息
 
 # MySQL 數據庫配置
 DB_CONFIG = {
-    'host': 'localhost',
+    'host': '172.245.146.23',
     'user': 'workrecord',           # 替換為您的 MySQL 用戶名
     'password': 'Ylbbqs1236',   # 替換為您的 MySQL 密碼
     'database': 'workrecord'  # 使用您指定的數據庫名稱
