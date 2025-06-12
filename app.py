@@ -33,8 +33,8 @@ def init_db():
             cursor = connection.cursor()
             
             # 檢查數據庫是否存在，不存在則創建
-            cursor.execute("CREATE DATABASE IF NOT EXISTS work_records_db")
-            cursor.execute("USE work_records_db")
+            cursor.execute("CREATE DATABASE IF NOT EXISTS workrecord")
+            cursor.execute("USE workrecord")
             
             # 創建表
             cursor.execute("""
