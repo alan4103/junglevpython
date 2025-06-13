@@ -9,12 +9,20 @@ from openpyxl import Workbook
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'  # 用於 flash 消息
 
+# 產品價格映射
+PRODUCT_PRICES = {
+    '007': 10,
+    '071': 15,
+    '072': 20,
+    '075': 25
+}
+
 # MySQL 數據庫配置
 DB_CONFIG = {
     'host': '172.245.146.23',
-    'user': 'workrecord',           # 替換為您的 MySQL 用戶名
-    'password': 'Ylbbqs1236',   # 替換為您的 MySQL 密碼
-    'database': 'workrecord'  # 使用您指定的數據庫名稱
+    'user': 'workrecord',
+    'password': 'Ylbbqs1236',
+    'database': 'workrecord'
 }
 
 # 初始化數據庫連接
@@ -42,7 +50,7 @@ def init_db():
         cursor.execute(f"CREATE DATABASE IF NOT EXISTS {DB_CONFIG['database']}")
         cursor.execute(f"USE {DB_CONFIG['database']}")
         
-        # 創建表
+        # 創建表 - 增加產品類型和數量字段
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS work_records (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -50,6 +58,9 @@ def init_db():
                 department VARCHAR(50),
                 work_type ENUM('安裝', '維修', '收機') NOT NULL,
                 line_count INT,
+                product_type ENUM('007', '071', '072', '075') NULL,
+                quantity INT NULL,
+                amount DECIMAL(10,2) NULL,
                 remark TEXT,
                 record_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 date DATE NOT NULL
@@ -76,7 +87,8 @@ def get_all_records():
             cursor = connection.cursor(dictionary=True)
             cursor.execute("""
                 SELECT id, job_number, department, work_type, 
-                       line_count, remark, record_time, date 
+                       line_count, product_type, quantity, amount,
+                       remark, record_time, date 
                 FROM work_records 
                 ORDER BY date DESC, record_time DESC
             """)
@@ -97,7 +109,8 @@ def search_records(keyword):
             cursor = connection.cursor(dictionary=True)
             query = """
                 SELECT id, job_number, department, work_type, 
-                       line_count, remark, record_time, date 
+                       line_count, product_type, quantity, amount,
+                       remark, record_time, date 
                 FROM work_records 
                 WHERE job_number LIKE %s OR 
                       department LIKE %s OR 
@@ -116,17 +129,28 @@ def search_records(keyword):
     return records
 
 # 新增記錄
-def add_record(job_number, department, work_type, line_count, remark, date):
+def add_record(job_number, department, work_type, line_count, product_type, quantity, remark, date):
+    # 計算金額
+    amount = None
+    if product_type and quantity:
+        try:
+            unit_price = PRODUCT_PRICES.get(product_type, 0)
+            amount = unit_price * quantity
+        except Exception:
+            amount = None
+    
     connection = get_db_connection()
     if connection:
         try:
             cursor = connection.cursor()
             query = """
                 INSERT INTO work_records 
-                (job_number, department, work_type, line_count, remark, date)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                (job_number, department, work_type, line_count, 
+                 product_type, quantity, amount, remark, date)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
-            cursor.execute(query, (job_number, department, work_type, line_count, remark, date))
+            cursor.execute(query, (job_number, department, work_type, line_count, 
+                                 product_type, quantity, amount, remark, date))
             connection.commit()
             flash("記錄添加成功", 'success')
             return cursor.lastrowid
@@ -139,7 +163,16 @@ def add_record(job_number, department, work_type, line_count, remark, date):
     return None
 
 # 更新記錄
-def update_record(record_id, job_number, department, work_type, line_count, remark, date):
+def update_record(record_id, job_number, department, work_type, line_count, product_type, quantity, remark, date):
+    # 計算金額
+    amount = None
+    if product_type and quantity:
+        try:
+            unit_price = PRODUCT_PRICES.get(product_type, 0)
+            amount = unit_price * quantity
+        except Exception:
+            amount = None
+    
     connection = get_db_connection()
     if connection:
         try:
@@ -150,11 +183,15 @@ def update_record(record_id, job_number, department, work_type, line_count, rema
                     department = %s, 
                     work_type = %s, 
                     line_count = %s, 
+                    product_type = %s, 
+                    quantity = %s, 
+                    amount = %s, 
                     remark = %s, 
                     date = %s 
                 WHERE id = %s
             """
-            cursor.execute(query, (job_number, department, work_type, line_count, remark, date, record_id))
+            cursor.execute(query, (job_number, department, work_type, line_count, 
+                                  product_type, quantity, amount, remark, date, record_id))
             connection.commit()
             if cursor.rowcount > 0:
                 flash("記錄更新成功", 'success')
@@ -201,7 +238,8 @@ def download_excel():
         
         wb = Workbook()
         ws = wb.active
-        ws.append(['ID', '工作單號', '部門', '工作類型', '線數', '備註', '記錄時間', '日期'])
+        # 添加新列：產品類型、數量和金額
+        ws.append(['ID', '工作單號', '部門', '工作類型', '線數', '產品類型', '數量', '金額', '備註', '記錄時間', '日期'])
         
         for record in records:
             ws.append([
@@ -210,6 +248,9 @@ def download_excel():
                 record['department'],
                 record['work_type'],
                 record['line_count'],
+                record['product_type'] if record['product_type'] else '',
+                record['quantity'] if record['quantity'] is not None else '',
+                record['amount'] if record['amount'] is not None else '',
                 record['remark'],
                 record['record_time'].strftime('%Y-%m-%d %H:%M:%S'),
                 record['date'].strftime('%Y-%m-%d')
@@ -234,7 +275,9 @@ def index():
     init_db()  # 確保數據庫已初始化
     default_date = datetime.now().strftime('%Y-%m-%d')
     work_types = ['安裝', '維修', '收機']
-    return render_template('index.html', default_date=default_date, work_types=work_types)
+    product_types = list(PRODUCT_PRICES.keys())  # 獲取產品類型列表
+    return render_template('index.html', default_date=default_date, 
+                          work_types=work_types, product_types=product_types)
 
 @app.route('/add', methods=['POST'])
 def add():
@@ -242,6 +285,8 @@ def add():
     department = request.form.get('department', '').strip()
     work_type = request.form.get('work_type', '安裝').strip()
     line_count = request.form.get('line_count', '0').strip()
+    product_type = request.form.get('product_type', '').strip()
+    quantity = request.form.get('quantity', '').strip()
     remark = request.form.get('remark', '').strip()
     date = request.form.get('date', '').strip()
     
@@ -259,7 +304,18 @@ def add():
     except ValueError:
         line_count = 0
     
-    add_record(job_number, department, work_type, line_count, remark, date)
+    # 轉換數量為整數
+    try:
+        quantity = int(quantity) if quantity else None
+    except ValueError:
+        quantity = None
+    
+    # 如果選擇了產品類型但未輸入數量，設置數量為0
+    if product_type and quantity is None:
+        quantity = 0
+    
+    add_record(job_number, department, work_type, line_count, 
+              product_type, quantity, remark, date)
     return redirect(url_for('view_records'))
 
 @app.route('/edit/<int:record_id>', methods=['GET', 'POST'])
@@ -269,6 +325,8 @@ def edit(record_id):
         department = request.form.get('department', '').strip()
         work_type = request.form.get('work_type', '安裝').strip()
         line_count = request.form.get('line_count', '0').strip()
+        product_type = request.form.get('product_type', '').strip()
+        quantity = request.form.get('quantity', '').strip()
         remark = request.form.get('remark', '').strip()
         date = request.form.get('date', '').strip()
         
@@ -286,7 +344,18 @@ def edit(record_id):
         except ValueError:
             line_count = 0
         
-        update_record(record_id, job_number, department, work_type, line_count, remark, date)
+        # 轉換數量為整數
+        try:
+            quantity = int(quantity) if quantity else None
+        except ValueError:
+            quantity = None
+        
+        # 如果選擇了產品類型但未輸入數量，設置數量為0
+        if product_type and quantity is None:
+            quantity = 0
+        
+        update_record(record_id, job_number, department, work_type, line_count, 
+                     product_type, quantity, remark, date)
         return redirect(url_for('view_records'))
     
     # GET 請求處理
@@ -302,7 +371,9 @@ def edit(record_id):
                 return redirect(url_for('view_records'))
             
             work_types = ['安裝', '維修', '收機']
-            return render_template('edit.html', record=record, work_types=work_types)
+            product_types = list(PRODUCT_PRICES.keys())
+            return render_template('edit.html', record=record, 
+                                  work_types=work_types, product_types=product_types)
         except Error as e:
             flash(f"獲取記錄失敗: {e}", 'error')
             return redirect(url_for('view_records'))
@@ -323,7 +394,8 @@ def view_records():
         records = search_records(keyword)
     else:
         records = get_all_records()
-    return render_template('records.html', records=records, search_keyword=keyword)
+    return render_template('records.html', records=records, 
+                          search_keyword=keyword, product_prices=PRODUCT_PRICES)
 
 if __name__ == '__main__':
     init_db()  # 啟動時初始化數據庫
