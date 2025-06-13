@@ -1,15 +1,70 @@
-<!-- 在现有表单字段后添加 -->
-<div class="form-group">
-    <label for="product_type">產品類型:</label>
-    <select id="product_type" name="product_type" class="form-control">
-        <option value="">-- 選擇產品 --</option>
-        {% for pt in product_types %}
-            <option value="{{ pt }}">{{ pt }}</option>
-        {% endfor %}
-    </select>
-</div>
+{% extends "base.html" %}
 
-<div class="form-group">
-    <label for="quantity">數量:</label>
-    <input type="number" id="quantity" name="quantity" min="0" class="form-control" placeholder="輸入數量">
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h2>新增工作記錄</h2>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('add') }}">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group mb-3">
+                        <label for="job_number" class="form-label">工作單號*</label>
+                        <input type="text" id="job_number" name="job_number" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="department" class="form-label">部門</label>
+                        <input type="text" id="department" name="department" class="form-control">
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="work_type" class="form-label">工作類型*</label>
+                        <select id="work_type" name="work_type" class="form-select" required>
+                            {% for wt in work_types %}
+                                <option value="{{ wt }}">{{ wt }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="form-group mb-3">
+                        <label for="line_count" class="form-label">線數</label>
+                        <input type="number" id="line_count" name="line_count" class="form-control" value="0" min="0">
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="product_type" class="form-label">產品類型</label>
+                        <select id="product_type" name="product_type" class="form-select">
+                            <option value="">-- 選擇產品 --</option>
+                            {% for pt in product_types %}
+                                <option value="{{ pt }}">{{ pt }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="quantity" class="form-label">數量</label>
+                        <input type="number" id="quantity" name="quantity" class="form-control" min="0">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group mb-3">
+                <label for="remark" class="form-label">備註</label>
+                <textarea id="remark" name="remark" class="form-control" rows="2"></textarea>
+            </div>
+            
+            <div class="form-group mb-3">
+                <label for="date" class="form-label">日期*</label>
+                <input type="date" id="date" name="date" class="form-control" value="{{ default_date }}" required>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">提交</button>
+            <a href="{{ url_for('view_records') }}" class="btn btn-secondary">查看記錄</a>
+        </form>
+    </div>
 </div>
+{% endblock %}
